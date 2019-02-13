@@ -8,15 +8,15 @@ import (
 	"github.com/hashicorp/errwrap"
 )
 
-type HandlerImpl struct {
+type Runner struct {
 	options *Options
 }
 
-func (h *HandlerImpl) Options() Options {
+func (h *Runner) Options() Options {
 	return *h.options
 }
 
-func (h *HandlerImpl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Runner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	next := h.options.Handler
 	for i := h.options.Middleware.Count() - 1; i >= 0; i-- {
 		mid := h.options.Middleware[i]
@@ -35,12 +35,12 @@ func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next http
 	f(w, r, next)
 }
 
-func New(setters ...Option) (*HandlerImpl, error) {
+func New(setters ...Option) (*Runner, error) {
 	opts, err := newOptions(setters...)
 	if err != nil {
 		return nil, err
 	}
-	return &HandlerImpl{
+	return &Runner{
 		options: opts,
 	}, nil
 }
