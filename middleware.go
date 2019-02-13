@@ -8,9 +8,29 @@ import (
 	"github.com/hashicorp/errwrap"
 )
 
-type Runner struct {
-	options *Options
-}
+//go:generate mockgen -destination ./mocks/http_handler.go -mock_names Handler=MockHTTPHandler -package mocks net/http Handler
+
+//go:generate mockgen -destination ./mocks/middleware_handler.go -package mocks github.com/darren-west/middleware Handler
+type (
+	Runner struct {
+		options *Options
+	}
+
+	Handler interface {
+		ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler)
+	}
+
+	HandlerFunc func(w http.ResponseWriter, r *http.Request, next http.Handler)
+
+	HandlerIterator []Handler
+
+	Options struct {
+		Middleware HandlerIterator
+		Handler    http.Handler
+	}
+
+	Option func(*Options) error
+)
 
 func (h *Runner) Options() Options {
 	return *h.options
@@ -29,12 +49,6 @@ func (h *Runner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	next.ServeHTTP(w, r)
 }
 
-type HandlerFunc func(w http.ResponseWriter, r *http.Request, next http.Handler)
-
-func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
-	f(w, r, next)
-}
-
 func New(setters ...Option) (*Runner, error) {
 	opts, err := newOptions(setters...)
 	if err != nil {
@@ -45,19 +59,9 @@ func New(setters ...Option) (*Runner, error) {
 	}, nil
 }
 
-//go:generate mockgen -destination ./mocks/http_handler.go -mock_names Handler=MockHTTPHandler -package mocks net/http Handler
-
-//go:generate mockgen -destination ./mocks/middleware_handler.go -package mocks github.com/darren-west/middleware Handler
-type Handler interface {
-	ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler)
+func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	f(w, r, next)
 }
-
-type Options struct {
-	Middleware HandlerIterator
-	Handler    http.Handler
-}
-
-type Option func(*Options) error
 
 func newOptions(optsetters ...Option) (*Options, error) {
 	opts := &Options{
@@ -108,8 +112,6 @@ func UseHandler(h http.Handler) Option {
 		return
 	}
 }
-
-type HandlerIterator []Handler
 
 func (hs HandlerIterator) ForEach(f func(Handler)) {
 	for _, h := range hs {
