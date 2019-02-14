@@ -16,11 +16,13 @@ type (
 		options *Options
 	}
 
+	Next func(w http.ResponseWriter, r *http.Request)
+
 	Handler interface {
-		ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler)
+		ServeHTTP(w http.ResponseWriter, r *http.Request, next Next)
 	}
 
-	HandlerFunc func(w http.ResponseWriter, r *http.Request, next http.Handler)
+	HandlerFunc func(w http.ResponseWriter, r *http.Request, next Next)
 
 	HandlerIterator []Handler
 
@@ -42,7 +44,7 @@ func (h *Runner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		mid := h.options.Middleware[i]
 		next = func(n http.Handler) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
-				mid.ServeHTTP(w, r, n)
+				mid.ServeHTTP(w, r, n.ServeHTTP)
 			}
 		}(next)
 	}
@@ -59,7 +61,7 @@ func New(setters ...Option) (*Runner, error) {
 	}, nil
 }
 
-func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
+func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next Next) {
 	f(w, r, next)
 }
 

@@ -91,8 +91,8 @@ func TestHandlerMiddleware_Invoked(t *testing.T) {
 	mockMiddleware.EXPECT().ServeHTTP(rec, req, gomock.Any()).
 		Return().
 		Times(1).
-		Do(func(w http.ResponseWriter, r *http.Request, next http.Handler) {
-			next.ServeHTTP(w, r)
+		Do(func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
+			next(w, r)
 		})
 	handler.ServeHTTP(rec, req)
 }
@@ -123,24 +123,24 @@ func TestHandlerMiddleware_MultipleMiddleware(t *testing.T) {
 	mockHandler := mocks.NewMockHTTPHandler(cont)
 	handler, err := middleware.New(
 		middleware.WithFunc(
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				fmt.Fprintf(w, "1")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "1", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "2")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "12", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "3")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "123", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "4")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
 		),
 		middleware.UseHandler(mockHandler),
