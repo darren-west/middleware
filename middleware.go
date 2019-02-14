@@ -11,6 +11,7 @@ import (
 //go:generate mockgen -destination ./mocks/http_handler.go -mock_names Handler=MockHTTPHandler -package mocks net/http Handler
 
 //go:generate mockgen -destination ./mocks/middleware_handler.go -package mocks github.com/darren-west/middleware Handler
+
 type (
 	Runner struct {
 		options *Options
@@ -112,6 +113,10 @@ func UseHandler(h http.Handler) Option {
 		o.Handler = h
 		return
 	}
+}
+
+func UseHandlerFunc(h http.HandlerFunc) Option {
+	return UseHandler(h)
 }
 
 func (hs HandlerIterator) ForEach(f func(Handler)) {
