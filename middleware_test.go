@@ -51,11 +51,24 @@ func TestOptions_WithNil(t *testing.T) {
 	assert.True(t, errwrap.Contains(err, "middleware is nil"))
 }
 
+func TestOptions_WithFuncNil(t *testing.T) {
+	_, err := middleware.New(
+		middleware.WithFunc(nil),
+	)
+	require.Error(t, err)
+	assert.True(t, errwrap.Contains(err, "middleware is nil"))
+}
+
 func TestOptions_Default(t *testing.T) {
 	m, err := middleware.New()
 	require.NoError(t, err)
 	assert.NotNil(t, m.Options().Handler)
 	assert.Equal(t, 0, m.Options().Middleware.Count())
+
+	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://bar", nil)
+	m.ServeHTTP(rec, req)
+	assert.Equal(t, "hello world!", rec.Body.String())
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestHandlerInvoked(t *testing.T) {
@@ -152,4 +165,17 @@ func TestHandlerMiddleware_MultipleMiddleware(t *testing.T) {
 
 	handler.ServeHTTP(rec, req)
 	assert.Equal(t, "1234", rec.Body.String())
+}
+
+func TestHandlerInvoked_UseHandlerFunc(t *testing.T) {
+	h, err := middleware.New(
+		middleware.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "foo")
+		}),
+	)
+	require.NoError(t, err)
+
+	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://bar", nil)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, "foo", rec.Body.String())
 }

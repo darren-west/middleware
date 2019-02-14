@@ -68,7 +68,7 @@ func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next Next
 func newOptions(optsetters ...Option) (*Options, error) {
 	opts := &Options{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, "Hello World!")
+			fmt.Fprintf(w, "hello world!")
 		}),
 		Middleware: []Handler{},
 	}
