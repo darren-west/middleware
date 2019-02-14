@@ -1,8 +1,5 @@
 language: go
 
-sudo: required
-language: go
-
 go:
 - "1.11.x"
 
@@ -11,4 +8,4 @@ install:
   - go get github.com/golang/mock/gomock
   - go install github.com/golang/mock/mockgen
 
-script: make generate test
+script: make

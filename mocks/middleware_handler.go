@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	middleware "github.com/darren-west/middleware"
 	gomock "github.com/golang/mock/gomock"
 	http "net/http"
 	reflect "reflect"
@@ -34,7 +35,7 @@ func (m *MockHandler) EXPECT() *MockHandlerMockRecorder {
 }
 
 // ServeHTTP mocks base method
-func (m *MockHandler) ServeHTTP(arg0 http.ResponseWriter, arg1 *http.Request, arg2 http.Handler) {
+func (m *MockHandler) ServeHTTP(arg0 http.ResponseWriter, arg1 *http.Request, arg2 middleware.Next) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "ServeHTTP", arg0, arg1, arg2)
 }

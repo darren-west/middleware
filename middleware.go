@@ -11,16 +11,19 @@ import (
 //go:generate mockgen -destination ./mocks/http_handler.go -mock_names Handler=MockHTTPHandler -package mocks net/http Handler
 
 //go:generate mockgen -destination ./mocks/middleware_handler.go -package mocks github.com/darren-west/middleware Handler
+
 type (
 	Runner struct {
 		options *Options
 	}
 
+	Next func(w http.ResponseWriter, r *http.Request)
+
 	Handler interface {
-		ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler)
+		ServeHTTP(w http.ResponseWriter, r *http.Request, next Next)
 	}
 
-	HandlerFunc func(w http.ResponseWriter, r *http.Request, next http.Handler)
+	HandlerFunc func(w http.ResponseWriter, r *http.Request, next Next)
 
 	HandlerIterator []Handler
 
@@ -37,16 +40,15 @@ func (h *Runner) Options() Options {
 }
 
 func (h *Runner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	next := h.options.Handler
+	last := h.options.Handler
 	for i := h.options.Middleware.Count() - 1; i >= 0; i-- {
-		mid := h.options.Middleware[i]
-		next = func(n http.Handler) http.HandlerFunc {
+		last = func(mid Handler, next http.Handler) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
-				mid.ServeHTTP(w, r, n)
+				mid.ServeHTTP(w, r, next.ServeHTTP)
 			}
-		}(next)
+		}(h.options.Middleware[i], last)
 	}
-	next.ServeHTTP(w, r)
+	last.ServeHTTP(w, r)
 }
 
 func New(setters ...Option) (*Runner, error) {
@@ -59,14 +61,14 @@ func New(setters ...Option) (*Runner, error) {
 	}, nil
 }
 
-func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
+func (f HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request, next Next) {
 	f(w, r, next)
 }
 
 func newOptions(optsetters ...Option) (*Options, error) {
 	opts := &Options{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintf(w, "Hello World!")
+			fmt.Fprintf(w, "hello world!")
 		}),
 		Middleware: []Handler{},
 	}
@@ -111,6 +113,10 @@ func UseHandler(h http.Handler) Option {
 		o.Handler = h
 		return
 	}
+}
+
+func UseHandlerFunc(h http.HandlerFunc) Option {
+	return UseHandler(h)
 }
 
 func (hs HandlerIterator) ForEach(f func(Handler)) {

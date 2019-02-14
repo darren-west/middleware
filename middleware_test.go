@@ -51,11 +51,24 @@ func TestOptions_WithNil(t *testing.T) {
 	assert.True(t, errwrap.Contains(err, "middleware is nil"))
 }
 
+func TestOptions_WithFuncNil(t *testing.T) {
+	_, err := middleware.New(
+		middleware.WithFunc(nil),
+	)
+	require.Error(t, err)
+	assert.True(t, errwrap.Contains(err, "middleware is nil"))
+}
+
 func TestOptions_Default(t *testing.T) {
 	m, err := middleware.New()
 	require.NoError(t, err)
 	assert.NotNil(t, m.Options().Handler)
 	assert.Equal(t, 0, m.Options().Middleware.Count())
+
+	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://bar", nil)
+	m.ServeHTTP(rec, req)
+	assert.Equal(t, "hello world!", rec.Body.String())
+	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestHandlerInvoked(t *testing.T) {
@@ -91,8 +104,8 @@ func TestHandlerMiddleware_Invoked(t *testing.T) {
 	mockMiddleware.EXPECT().ServeHTTP(rec, req, gomock.Any()).
 		Return().
 		Times(1).
-		Do(func(w http.ResponseWriter, r *http.Request, next http.Handler) {
-			next.ServeHTTP(w, r)
+		Do(func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
+			next(w, r)
 		})
 	handler.ServeHTTP(rec, req)
 }
@@ -123,24 +136,24 @@ func TestHandlerMiddleware_MultipleMiddleware(t *testing.T) {
 	mockHandler := mocks.NewMockHTTPHandler(cont)
 	handler, err := middleware.New(
 		middleware.WithFunc(
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				fmt.Fprintf(w, "1")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "1", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "2")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "12", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "3")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
-			func(w http.ResponseWriter, r *http.Request, next http.Handler) {
+			func(w http.ResponseWriter, r *http.Request, next middleware.Next) {
 				assert.Equal(t, "123", w.(*httptest.ResponseRecorder).Body.String())
 				fmt.Fprintf(w, "4")
-				next.ServeHTTP(w, r)
+				next(w, r)
 			},
 		),
 		middleware.UseHandler(mockHandler),
@@ -152,4 +165,17 @@ func TestHandlerMiddleware_MultipleMiddleware(t *testing.T) {
 
 	handler.ServeHTTP(rec, req)
 	assert.Equal(t, "1234", rec.Body.String())
+}
+
+func TestHandlerInvoked_UseHandlerFunc(t *testing.T) {
+	h, err := middleware.New(
+		middleware.UseHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "foo")
+		}),
+	)
+	require.NoError(t, err)
+
+	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "http://bar", nil)
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, "foo", rec.Body.String())
 }
