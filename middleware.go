@@ -39,16 +39,15 @@ func (h *Runner) Options() Options {
 }
 
 func (h *Runner) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	next := h.options.Handler
+	last := h.options.Handler
 	for i := h.options.Middleware.Count() - 1; i >= 0; i-- {
-		mid := h.options.Middleware[i]
-		next = func(n http.Handler) http.HandlerFunc {
+		last = func(mid Handler, next http.Handler) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
-				mid.ServeHTTP(w, r, n.ServeHTTP)
+				mid.ServeHTTP(w, r, next.ServeHTTP)
 			}
-		}(next)
+		}(h.options.Middleware[i], last)
 	}
-	next.ServeHTTP(w, r)
+	last.ServeHTTP(w, r)
 }
 
 func New(setters ...Option) (*Runner, error) {
