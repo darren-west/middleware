@@ -8,6 +8,10 @@ import (
 	"github.com/hashicorp/errwrap"
 )
 
+var (
+	_ http.Handler = &Runner{}
+)
+
 //go:generate mockgen -destination ./mocks/http_handler.go -mock_names Handler=MockHTTPHandler -package mocks net/http Handler
 
 //go:generate mockgen -destination ./mocks/middleware_handler.go -package mocks github.com/darren-west/middleware Handler
@@ -17,7 +21,7 @@ type (
 		options *Options
 	}
 
-	Next func(w http.ResponseWriter, r *http.Request)
+	Next http.HandlerFunc
 
 	Handler interface {
 		ServeHTTP(w http.ResponseWriter, r *http.Request, next Next)
